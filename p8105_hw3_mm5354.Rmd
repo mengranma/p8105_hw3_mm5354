@@ -12,66 +12,93 @@ devtools::install_github("p8105/p8105.datasets", force = TRUE)
 library(p8105.datasets)
 library(tidyverse)
 library(ggplot2)
+devtools::install_github("thomasp85/patchwork")
+library(patchwork)
 knitr::opts_chunk$set(
   fig.width = 6,
   fig.asp = .6,
   out.width = "90%"
 )
 ```
+
+#Problem 1
 ```{r}
 data("brfss_smart2010")
 brfss = janitor::clean_names(brfss_smart2010) %>% 
   #Focus on the “Overall Health” topic
   filter(topic == "Overall Health") %>% 
+  #include only responses from “Excellent” to “Poor” (i.e. no pre-collapsed categories)
   filter(topic != "Excellent" | topic != "`Very good`" | topic != "Good" | topic != "Fair" | topic != "Poor") %>%
-  mutate(., response = as.factor(brfss$response))
+  #organize responses as a factor taking levels from “Excellent” to “Poor”
+  spread(., key = "response", value = "data_value")
 ```
-include only responses from “Excellent” to “Poor” (i.e. no pre-collapsed categories)
-organize responses as a factor taking levels from “Excellent” to “Poor”
-
 
 In 2002, which states were observed at 7 locations?
-Make a “spaghetti plot” that shows the number of observations in each state from 2002 to 2010.
-
 ```{r}
-brfss2002 = filter(brfss, year == 2002)
-
+brfss2002 = filter(brfss, year == 2002) %>% 
+  group_by(locationabbr) %>% 
+  summarize(location_num = length(unique(locationdesc))) 
+filter(brfss2002, location_num == 7)
 ```
-
+Make a “spaghetti plot” that shows the number of observations in each state from 2002 to 2010.
 ```{r}
-Numobservation_2002 = sum(brfss$year == 2002)
-Numobservation_2003 = sum(brfss$year == 2003)
-Numobservation_2004 = sum(brfss$year == 2004)
-Numobservation_2005 = sum(brfss$year == 2005)
-Numobservation_2006 = sum(brfss$year == 2006)
-Numobservation_2007 = sum(brfss$year == 2007)
-Numobservation_2008 = sum(brfss$year == 2008)
-Numobservation_2009 = sum(brfss$year == 2009)
-Numobservation_2010 = sum(brfss$year == 2010)
-Numobservation_eachyear = c(Numobservation_2002, Numobservation_2003, Numobservation_2004, Numobservation_2005, Numobservation_2006, Numobservation_2007, Numobservation_2008, Numobservation_2009, Numobservation_2010)
-plot(aes(x = factor("2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010"), y =factor(Numobservation_eachyear))) 
+brfss %>%
+  group_by(locationabbr, year) %>%
+  summarize(n = n()) %>%
+  ggplot(aes(x = year, y = n, color = locationabbr)) + 
+    geom_point() + 
+    theme(legend.position = "bottom")
 ```
 
 Make a table showing, for the years 2002, 2006, and 2010, the mean and standard deviation of the proportion of “Excellent” responses across locations in NY State.
 ```{r}
-brfss_Excellent = filter(brfss, brfss$locationabbr == "NY") 
-proportion_Excellent = sum(brfss2002Excellent$response == "Excellent")/nrow(brfss2002Excellent)
+brfss_Excellent = filter(brfss, brfss$locationabbr == "NY") %>% 
+  filter(., year == 2002 | year == 2006 | year == 2010)
 
-instacart_data %>%
-  group_by(year, locationdesc) %>%
-  summarize(mean_tmax = mean(tmax)) %>% 
-  spread(key = month, value = mean_tmax) %>% 
+brfss_Excellent %>%
+  group_by(year, locationdesc) %>% 
+  summarize(mean_proportion = mean(Excellent, na.rm = TRUE), 
+       sd_proportion = sd(Excellent, na.rm = TRUE)) %>% 
+  spread(key = locationdesc, value = mean_proportion) %>% 
+  knitr::kable(digits = 1)
 ```
 
 For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.
 ```{r}
-for(brfss$year in 2002:2010){
-  for (brfss$locationabbr in .){
-}
-}
+ggplotExce = brfss %>%
+  group_by(year, locationabbr) %>% 
+  mutate(mean_proportion = mean(Excellent, na.rm = TRUE)) %>% 
+  ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
+    geom_point() 
+
+ggplotVeryg = brfss %>%
+  group_by(year, locationabbr) %>% 
+  mutate(mean_proportion = mean(`Very good`, na.rm = TRUE)) %>% 
+  ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
+    geom_point() 
+
+ggplotFair = brfss %>%
+  group_by(year, locationabbr) %>% 
+  mutate(mean_proportion = mean(Fair, na.rm = TRUE)) %>% 
+  ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
+    geom_point() 
+
+ggplotGood = brfss %>%
+  group_by(year, locationabbr) %>% 
+  mutate(mean_proportion = mean(Good, na.rm = TRUE)) %>% 
+  ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
+    geom_point() 
+
+ggplotPoor = brfss %>%
+  group_by(year, locationabbr) %>% 
+  mutate(mean_proportion = mean(Poor, na.rm = TRUE)) %>% 
+  ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
+    geom_point() 
+
+(ggplotExce + ggplotVeryg + ggplotGood) / (ggplotPoor + ggplotFair)
 ```
 
-
+#Problem 2
 ```{r, include= FALSE}
 # install.packages("devtools")
 devtools::install_github("p8105/p8105.datasets", force = TRUE)
@@ -105,5 +132,38 @@ packaged_veg_fruits = filter(instacart_data, aisle == "packaged vegetables fruit
 ```
 
 Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+```{r}
+instacart_data %>%
+  filter(product_name == "Pink Lady Apples" | product_name == "Coffee Ice Cream") %>% 
+  group_by(product_name, order_hour_of_day) %>%
+  summarize(mean_hour = mean(order_hour_of_day)) %>% 
+  spread(key = order_hour_of_day, value = mean_hour)
+```
+
+#Problem 3
+```{r, include= FALSE}
+# install.packages("devtools")
+devtools::install_github("p8105/p8105.datasets", force = TRUE)
+library(p8105.datasets)
+```
 
 
+```{r}
+data(ny_noaa)
+noaa_data = janitor::clean_names(ny_noaa)
+```
+Write a short description of the dataset, noting the size and structure of the data, which is dimension: `r nrow(noaa_data)` rows x `r ncol(noaa_data)` columns. describing some key variables, and indicating the extent to which missing data is an issue `r sum(is.na(noaa_data$prcp))` and `r sum(is.na(noaa_data$snow))` and `r sum(is.na(noaa_data$snwd))` and `r sum(is.na(noaa_data$tmax))` and `r sum(is.na(noaa_data$tmin))`.
+
+Do some data cleaning. Create separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
+
+
+New_date <- data.frame(date = noaa_data$date,
+                 year = as.numeric(format(noaa_data$date, format = "%Y")),
+                 month = as.numeric(format(noaa_data$date, format = "%m")),
+                 day = as.numeric(format(noaa_data$date, format = "%d")))
+#noaa_data_new = left_join(noaa_data, New_date, by = "date")
+New
+```
+
+Make a two-panel plot showing the average temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
+Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
