@@ -28,7 +28,7 @@ brfss = janitor::clean_names(brfss_smart2010) %>%
   #Focus on the “Overall Health” topic
   filter(topic == "Overall Health") %>% 
   #include only responses from “Excellent” to “Poor” (i.e. no pre-collapsed categories)
-  filter(topic != "Excellent" | topic != "`Very good`" | topic != "Good" | topic != "Fair" | topic != "Poor") %>%
+  filter(response == "Excellent" | response == "Very good" | response == "Good" | response == "Fair" | response == "Poor") %>%
   #organize responses as a factor taking levels from “Excellent” to “Poor”
   spread(., key = "response", value = "data_value")
 ```
@@ -44,10 +44,10 @@ Make a “spaghetti plot” that shows the number of observations in each state 
 ```{r}
 brfss %>%
   group_by(locationabbr, year) %>%
-  summarize(n = n()) %>%
+  summarize(n = sum(sample_size)) %>%
   ggplot(aes(x = year, y = n, color = locationabbr)) + 
     geom_point() + 
-    theme(legend.position = "bottom")
+    geom_line()
 ```
 
 Make a table showing, for the years 2002, 2006, and 2010, the mean and standard deviation of the proportion of “Excellent” responses across locations in NY State.
@@ -56,10 +56,9 @@ brfss_Excellent = filter(brfss, brfss$locationabbr == "NY") %>%
   filter(., year == 2002 | year == 2006 | year == 2010)
 
 brfss_Excellent %>%
-  group_by(year, locationdesc) %>% 
+  group_by(year) %>% 
   summarize(mean_proportion = mean(Excellent, na.rm = TRUE), 
        sd_proportion = sd(Excellent, na.rm = TRUE)) %>% 
-  spread(key = locationdesc, value = mean_proportion) %>% 
   knitr::kable(digits = 1)
 ```
 
@@ -69,42 +68,41 @@ ggplotExce = brfss %>%
   group_by(year, locationabbr) %>% 
   mutate(mean_proportion = mean(Excellent, na.rm = TRUE)) %>% 
   ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
-    geom_point() 
+    geom_point() +
+    labs(title = "Excellent Proportion")
 
 ggplotVeryg = brfss %>%
   group_by(year, locationabbr) %>% 
   mutate(mean_proportion = mean(`Very good`, na.rm = TRUE)) %>% 
   ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
-    geom_point() 
+    geom_point() +
+      labs(title = "Very good Proportion")
 
 ggplotFair = brfss %>%
   group_by(year, locationabbr) %>% 
   mutate(mean_proportion = mean(Fair, na.rm = TRUE)) %>% 
   ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
-    geom_point() 
+    geom_point() +
+      labs(title = "Fair Proportion")
 
 ggplotGood = brfss %>%
   group_by(year, locationabbr) %>% 
   mutate(mean_proportion = mean(Good, na.rm = TRUE)) %>% 
   ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
-    geom_point() 
+    geom_point() +
+      labs(title = "Good Proportion")
 
 ggplotPoor = brfss %>%
   group_by(year, locationabbr) %>% 
   mutate(mean_proportion = mean(Poor, na.rm = TRUE)) %>% 
   ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
-    geom_point() 
+    geom_point() +
+      labs(title = "Poor Proportion")
 
 (ggplotExce + ggplotVeryg + ggplotGood) / (ggplotPoor + ggplotFair)
 ```
 
 #Problem 2
-```{r, include= FALSE}
-# install.packages("devtools")
-devtools::install_github("p8105/p8105.datasets", force = TRUE)
-library(p8105.datasets)
-```
-
 ```{r}
 data(instacart)
 instacart_data = janitor::clean_names(instacart)
@@ -123,47 +121,98 @@ ggplot(instacart_data, aes(x = aisle_id)) +
   geom_bar()
 ```
 
-Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”
-
+Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits.”
 ```{r}
-baking_ingred = filter(instacart_data, aisle == "baking ingredients")
-dog_food_care = filter(instacart_data, aisle == "dog food care")
-packaged_veg_fruits = filter(instacart_data, aisle == "packaged vegetables fruits")
+most_pop_item_aisles = instacart_data %>%
+  filter(., aisle == "baking ingredients" | aisle == "dog food care" | aisle == "packaged vegetables fruits") %>% 
+  group_by(aisle)
 ```
 
 Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
 ```{r}
 instacart_data %>%
   filter(product_name == "Pink Lady Apples" | product_name == "Coffee Ice Cream") %>% 
-  group_by(product_name, order_hour_of_day) %>%
+  group_by(product_name, order_dow) %>%
   summarize(mean_hour = mean(order_hour_of_day)) %>% 
-  spread(key = order_hour_of_day, value = mean_hour)
+  spread(key = order_dow, value = mean_hour)
 ```
 
 #Problem 3
-```{r, include= FALSE}
-# install.packages("devtools")
-devtools::install_github("p8105/p8105.datasets", force = TRUE)
-library(p8105.datasets)
-```
-
-
 ```{r}
 data(ny_noaa)
 noaa_data = janitor::clean_names(ny_noaa)
 ```
-Write a short description of the dataset, noting the size and structure of the data, which is dimension: `r nrow(noaa_data)` rows x `r ncol(noaa_data)` columns. describing some key variables, and indicating the extent to which missing data is an issue `r sum(is.na(noaa_data$prcp))` and `r sum(is.na(noaa_data$snow))` and `r sum(is.na(noaa_data$snwd))` and `r sum(is.na(noaa_data$tmax))` and `r sum(is.na(noaa_data$tmin))`.
+Write a short description of the dataset, noting the size and structure of the data, which is dimension: `r nrow(noaa_data)` rows x `r ncol(noaa_data)` columns. Some key variables are as the followings:
+id: Weather station ID
+date: Date of observation
+prcp: Precipitation (tenths of mm)
+snow: Snowfall (mm)
+snwd: Snow depth (mm)
+tmax: Maximum temperature (tenths of °C)
+tmin: Minimum temperature (tenths of °C)
+
+Now, indicating the extent to which missing data is an issue. The numbers of missing values for each variable/column are as the following: 
+prcp: `r sum(is.na(noaa_data$prcp))`
+snow: `r sum(is.na(noaa_data$snow))`
+snwd: `r sum(is.na(noaa_data$snwd))`
+tmax: `r sum(is.na(noaa_data$tmax))`
+tmin: `r sum(is.na(noaa_data$tmin))`
+
 
 Do some data cleaning. Create separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
 
+```{r}
+#Create separate variables for year, month, and day.
+New_noaa_data = mutate(noaa_data, noaa_data$date, year = as.numeric(format(noaa_data$date, format = "%Y")), 
+month = as.numeric(format(noaa_data$date, format = "%m")),
+day = as.numeric(format(noaa_data$date, format = "%d")))
 
-New_date <- data.frame(date = noaa_data$date,
-                 year = as.numeric(format(noaa_data$date, format = "%Y")),
-                 month = as.numeric(format(noaa_data$date, format = "%m")),
-                 day = as.numeric(format(noaa_data$date, format = "%d")))
-#noaa_data_new = left_join(noaa_data, New_date, by = "date")
-New
+
+
+#For snowfall, what are the most commonly observed values? Why?
+which.max(table(New_noaa_data$snow))
 ```
 
 Make a two-panel plot showing the average temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
+
+```{r}
+Jan_July_average = New_noaa_data %>%
+  filter(month == 1 | month == 7) 
+  #mutate(tdiff = tmax - tmin) %>% 
+  
+
+Jan_July_average %>% 
+  group_by(month, id) %>% 
+  summarize(mean_tempmax = mean(tmax, na.rm = TRUE), 
+            mean_tempmin = mean(tmin, na.rm = TRUE)) %>% View
+  ggplot(aes(x = id, y = mean_tempmax, color = month)) + 
+    geom_boxplot() 
+  ggplot(aes(x = id, y = mean_tempmin, color = month)) + 
+    geom_boxplot() 
+```
+
+
 Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
+```{r}
+# (i) tmax vs tmin for the full dataset
+Tmax_vs_Tmin = ggplot(New_noaa_data, aes(x = tmin, y = tmax)) + 
+  geom_point() + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum temperature (°C)",
+    y = "Maxiumum temperature (°C)",
+    caption = "Data from the NY noaa"
+    )
+# (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year
+Snowfall_distribution = New_noaa_data %>% 
+  filter(snow > 0 & snow < 100) %>%
+  ggplot(aes(x = month, y = snow, color = year)) + 
+  geom_point() +
+  geom_line() +
+  labs(
+  title = "Distribution of snowfall among different years",
+  x = "Distribution of snowfall within each year",
+  y = "Snowfall values"
+)
+```
+
