@@ -10,8 +10,11 @@ knitr::opts_chunk$set(echo = TRUE)
 # install.packages("devtools")
 devtools::install_github("p8105/p8105.datasets", force = TRUE)
 library(p8105.datasets)
+library(ggridges)
+library(hexbin)
 library(tidyverse)
 library(ggplot2)
+require(data.table)
 devtools::install_github("thomasp85/patchwork")
 library(patchwork)
 knitr::opts_chunk$set(
@@ -40,11 +43,11 @@ brfss2002 = filter(brfss, year == 2002) %>%
   summarize(location_num = length(unique(locationdesc))) 
 filter(brfss2002, location_num == 7)
 ```
-Make a “spaghetti plot” that shows the number of observations in each state from 2002 to 2010.
+Make a “spaghetti plot” that shows the number of locations in each state from 2002 to 2010.
 ```{r}
 brfss %>%
-  group_by(locationabbr, year) %>%
-  summarize(n = sum(sample_size)) %>%
+  group_by(locationabbr, year) %>% 
+  summarize(n = n_distinct(locationdesc)) %>% 
   ggplot(aes(x = year, y = n, color = locationabbr)) + 
     geom_point() + 
     geom_line()
@@ -121,11 +124,28 @@ ggplot(instacart_data, aes(x = aisle_id)) +
   geom_bar()
 ```
 
-Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits.”
+Make a table showing the most popular item in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”.
 ```{r}
 most_pop_item_aisles = instacart_data %>%
-  filter(., aisle == "baking ingredients" | aisle == "dog food care" | aisle == "packaged vegetables fruits") %>% 
-  group_by(aisle)
+  filter(., aisle == "baking ingredients") %>% 
+  group_by(aisle) %>% 
+  count(.,product_name)
+Most_pop_baking = tail(data.table(most_pop_item_aisles, key = "n"),1)
+
+
+most_pop_item_aisles = instacart_data %>%
+  filter(., aisle == "dog food care") %>% 
+  group_by(aisle) %>% 
+  count(.,product_name)
+Most_pop_dog = tail(data.table(most_pop_item_aisles, key = "n"),1)
+
+most_pop_item_aisles = instacart_data %>%
+  filter(., aisle == "packaged vegetables fruits") %>% 
+  group_by(aisle) %>% 
+  count(.,product_name)
+Most_pop_veg = tail(data.table(most_pop_item_aisles, key = "n"),1)
+
+rbind(Most_pop_baking, Most_pop_dog, Most_pop_veg)
 ```
 
 Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
@@ -134,7 +154,7 @@ instacart_data %>%
   filter(product_name == "Pink Lady Apples" | product_name == "Coffee Ice Cream") %>% 
   group_by(product_name, order_dow) %>%
   summarize(mean_hour = mean(order_hour_of_day)) %>% 
-  spread(key = order_dow, value = mean_hour)
+  spread(key = order_dow, value = mean_hour) 
 ```
 
 #Problem 3
@@ -163,56 +183,77 @@ Do some data cleaning. Create separate variables for year, month, and day. Ensur
 
 ```{r}
 #Create separate variables for year, month, and day.
-New_noaa_data = mutate(noaa_data, noaa_data$date, year = as.numeric(format(noaa_data$date, format = "%Y")), 
-month = as.numeric(format(noaa_data$date, format = "%m")),
-day = as.numeric(format(noaa_data$date, format = "%d")))
+New_noaa_data = mutate(noaa_data, noaa_data$date, year = as.integer(format(noaa_data$date, format = "%Y")), month = as.integer(format(noaa_data$date, format = "%m")), day = as.integer(format(noaa_data$date, format = "%d")))
 
-
+#Ensure observations for temperature, precipitation, and snowfall are given in reasonable units.
+New_noaa_data = mutate(New_noaa_data,
+  tmax = as.integer(tmax) / 10, 
+  tmin = as.integer(tmin) / 10,
+  prcp = as.integer(prcp) / 10
+)
 
 #For snowfall, what are the most commonly observed values? Why?
 which.max(table(New_noaa_data$snow))
 ```
 
-Make a two-panel plot showing the average temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
+Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
 
-```{r}
+```{r} 
 Jan_July_average = New_noaa_data %>%
-  filter(month == 1 | month == 7) 
-  #mutate(tdiff = tmax - tmin) %>% 
+  select(id, prcp, snow, snwd, tmax, tmin, year, month, day) %>% 
+  filter(month == 1 | month == 7) %>% 
+  filter(!is.na(tmax) | !is.na(tmin))
   
+Jan_plot = Jan_July_average %>% 
+  filter(month == 1) %>% 
+  group_by(id, year, month) %>% 
+  summarize(mean_tempmax = mean(as.integer(tmax), na.rm = TRUE)) %>%
+  ggplot(aes(x = id, y = mean_tempmax, color = year)) + 
+    geom_point() +
+    labs(
+      title = "Average temperature in January in each station across years",
+      x = "Weather station ID",
+      y = "Mean Maxiumum temperature (°C)"
+      )
 
-Jan_July_average %>% 
-  group_by(month, id) %>% 
-  summarize(mean_tempmax = mean(tmax, na.rm = TRUE), 
-            mean_tempmin = mean(tmin, na.rm = TRUE)) %>% View
-  ggplot(aes(x = id, y = mean_tempmax, color = month)) + 
-    geom_boxplot() 
-  ggplot(aes(x = id, y = mean_tempmin, color = month)) + 
-    geom_boxplot() 
+July_plot = Jan_July_average %>% 
+  filter(month == 7) %>% 
+  group_by(id, year, month) %>%
+  summarize(mean_tempmax = mean(as.integer(tmax), na.rm = TRUE)) %>%
+  ggplot(aes(x = id, y = mean_tempmax, color = year)) + 
+    geom_point() +
+    labs(
+      title = "Average temperature in July in each station across years",
+      x = "Weather station ID",
+      y = "Mean Maxiumum temperature (°C)"
+      )
+(Jan_plot + July_plot)
 ```
 
 
 Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
-```{r}
+```{r} 
 # (i) tmax vs tmin for the full dataset
-Tmax_vs_Tmin = ggplot(New_noaa_data, aes(x = tmin, y = tmax)) + 
-  geom_point() + 
-  labs(
-    title = "Temperature plot",
-    x = "Minimum temperature (°C)",
-    y = "Maxiumum temperature (°C)",
-    caption = "Data from the NY noaa"
-    )
+New_noaa_data %>% 
+  filter(!is.na(tmax) & !is.na(tmin)) %>% 
+  ggplot(aes(x = tmin, y = tmax)) + 
+    geom_hex() +
+    labs(
+        title = "Temperature plot",
+        x = "Minimum temperature (°C)",
+        y = "Maxiumum temperature (°C)"
+      )
+
 # (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year
-Snowfall_distribution = New_noaa_data %>% 
+New_noaa_data %>% 
   filter(snow > 0 & snow < 100) %>%
-  ggplot(aes(x = month, y = snow, color = year)) + 
-  geom_point() +
-  geom_line() +
-  labs(
-  title = "Distribution of snowfall among different years",
-  x = "Distribution of snowfall within each year",
-  y = "Snowfall values"
-)
+  ggplot(aes(x = year, y = snow, color = year)) + 
+    geom_point() +
+    geom_line() +
+    labs(
+      title = "Distribution of snowfall among different years",
+      x = "Distribution of snowfall within each year",
+      y = "Snowfall values"
+    )
 ```
 
