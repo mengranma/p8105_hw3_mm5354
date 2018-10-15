@@ -2,7 +2,7 @@
 title: "p8105_hw3_mm5354"
 author: "Mengran Ma"
 date: "2018/10/3"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -25,7 +25,7 @@ knitr::opts_chunk$set(
 ```
 
 #Problem 1
-```{r}
+```{r data_cleaning_restructuring}
 data("brfss_smart2010")
 brfss = janitor::clean_names(brfss_smart2010) %>% 
   #Focus on the “Overall Health” topic
@@ -37,14 +37,18 @@ brfss = janitor::clean_names(brfss_smart2010) %>%
 ```
 
 In 2002, which states were observed at 7 locations?
-```{r}
-brfss2002 = filter(brfss, year == 2002) %>% 
+```{r 7_locations}
+filter(brfss, year == 2002) %>% 
   group_by(locationabbr) %>% 
-  summarize(location_num = length(unique(locationdesc))) 
-filter(brfss2002, location_num == 7)
+  summarize(location_num = length(unique(locationdesc))) %>% 
+  filter(location_num == 7)
 ```
+**In 2002, CT, FL, and NC, these three states were observed at 7 locations**
+
+
+
 Make a “spaghetti plot” that shows the number of locations in each state from 2002 to 2010.
-```{r}
+```{r spaghetti_plot}
 brfss %>%
   group_by(locationabbr, year) %>% 
   summarize(n = n_distinct(locationdesc)) %>% 
@@ -52,80 +56,79 @@ brfss %>%
     geom_point() + 
     geom_line()
 ```
+**Most states contain less than 20 distinct locations (some even contain less than 10 different locations) from 2002 to 2010.**
+
+
 
 Make a table showing, for the years 2002, 2006, and 2010, the mean and standard deviation of the proportion of “Excellent” responses across locations in NY State.
-```{r}
-brfss_Excellent = filter(brfss, brfss$locationabbr == "NY") %>% 
-  filter(., year == 2002 | year == 2006 | year == 2010)
-
-brfss_Excellent %>%
+```{r proportion_Excellent}
+filter(brfss, brfss$locationabbr == "NY") %>% 
+  filter(., year == 2002 | year == 2006 | year == 2010) %>% 
   group_by(year) %>% 
   summarize(mean_proportion = mean(Excellent, na.rm = TRUE), 
        sd_proportion = sd(Excellent, na.rm = TRUE)) %>% 
-  knitr::kable(digits = 1)
+  knitr::kable(digits = 4)
 ```
+**The mean proportions of “Excellent” responses across locations in NY State are similar for 2006 and 2010. The standard deviation of the proportion of “Excellent” responses across locations in NY State is the greatest for 2002, and lowest for 2010**
+
 
 For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.
-```{r}
-ggplotExce = brfss %>%
+```{r five_panel_plot}
+brfss %>%
   group_by(year, locationabbr) %>% 
-  mutate(mean_proportion = mean(Excellent, na.rm = TRUE)) %>% 
-  ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
-    geom_point() +
-    labs(title = "Excellent Proportion")
-
-ggplotVeryg = brfss %>%
-  group_by(year, locationabbr) %>% 
-  mutate(mean_proportion = mean(`Very good`, na.rm = TRUE)) %>% 
-  ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
-    geom_point() +
-      labs(title = "Very good Proportion")
-
-ggplotFair = brfss %>%
-  group_by(year, locationabbr) %>% 
-  mutate(mean_proportion = mean(Fair, na.rm = TRUE)) %>% 
-  ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
-    geom_point() +
-      labs(title = "Fair Proportion")
-
-ggplotGood = brfss %>%
-  group_by(year, locationabbr) %>% 
-  mutate(mean_proportion = mean(Good, na.rm = TRUE)) %>% 
-  ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
-    geom_point() +
-      labs(title = "Good Proportion")
-
-ggplotPoor = brfss %>%
-  group_by(year, locationabbr) %>% 
-  mutate(mean_proportion = mean(Poor, na.rm = TRUE)) %>% 
-  ggplot(aes(x = locationabbr, y = mean_proportion, color = year)) + 
-    geom_point() +
-      labs(title = "Poor Proportion")
-
-(ggplotExce + ggplotVeryg + ggplotGood) / (ggplotPoor + ggplotFair)
+  summarize(mean_excellent_proportion = mean(Excellent, na.rm = TRUE),
+         mean_verygood_proportion = mean(`Very good`, na.rm = TRUE),
+         mean_fair_proportion = mean(Fair, na.rm = TRUE),
+         mean_good_proportion = mean(Good, na.rm = TRUE), 
+         mean_poor_proportion = mean(Poor, na.rm = TRUE)) %>% 
+  gather(key = response_new, value = average_proportion, mean_excellent_proportion:mean_poor_proportion) %>% 
+  ggplot(aes(x = year, y = average_proportion, color = locationabbr)) + 
+    geom_point() + 
+    geom_line() +
+    labs(title = "Average proportion in each response category") +
+    theme(axis.text.x = element_text(angle = 90, size = 8)) + 
+    theme(legend.position = "right") +
+    facet_grid(~response_new)
 ```
+**The distribution of average proportions for each response category is pretty consistent whithin its own response category across different states. The mean proportions of each response type have roughly the same center across states across years from 2002 to 2010. This implies the mean proportion of each response stays on the same level across years. The distribution of average proportions of "Poor" responses has the least variation (also least range), while in contrast, the distribution of average proportions of "Very good" responses seems to have the greatest variation (also greatest range). This means that people who have gaven poor responses before, this opinion won't vary a lot across different years **
+
+
 
 #Problem 2
-```{r}
+```{r data_importing_cleaning}
 data(instacart)
 instacart_data = janitor::clean_names(instacart)
 ```
-Write a short description of the dataset, noting the size and structure of the data, which is dimension: `r nrow(instacart_data)` rows x `r ncol(instacart_data)` columns. Describing some key variables, and giving illstrative examples of observations. 
+**The Instacart dataset consists of information about online grocery orders from instacart users. The size and structure of the data, which is dimension: `r nrow(instacart_data)` rows x `r ncol(instacart_data)` columns, with each row in the dataset represents a product from an order. Each product is identified by "product_id" and each customer has the unique "user_id". When one product has been ordered by the same customer in the past, the"reordered" column shows 1.**
+
 
 How many aisles are there, and which aisles are the most items ordered from?
-```{r}
-length(instacart_data$aisle)
+```{r aisles}
+length(unique(instacart_data$aisle))
 names(which.max(table(instacart_data$aisle)))
+most_items_order_aisles = filter(instacart_data, aisle != "fresh vegetables")
+names(which.max(table(most_items_order_aisles$aisle)))
 ```
+**There are `r length(unique(instacart_data$aisle))` aisles recorded in the dataset. Most items are ordered from aisle `r names(which.max(table(instacart_data$aisle)))` and aisle `r names(which.max(table(most_items_order_aisles$aisle)))`. On one hand, it reflects that people tend to have healthy eating habits like eating greater amount of fresh vegetables and fruits. On the other hand, it indicates that fresh vegetables & fruits are in large demands in the market.**
+
 
 Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.
-```{r}
-ggplot(instacart_data, aes(x = aisle_id)) + 
-  geom_bar()
+```{r items_in_each_aisle}
+ggplot(instacart_data, aes(x = aisle, fill = department)) + 
+  geom_bar() +
+  labs(
+      title = "Bar-graph of the number of items ordered in each aisle",
+      x = "Aisle",
+      y = "Number of items ordered"
+    ) +
+  theme(legend.position = "bottom") +
+  theme(axis.text.x = element_text(angle = 90, size = 5))
 ```
+**According to this Bar Graph, "Produce" is an aisle that is most popular among all the aisles because it has the greatest number of items ordered from this aisle. Fresh vegetables, fresh fruits, and packaged vegetables fruits are characterized as the top 3 greatest ordered items/products which all belong to this "Produce" aisle**
+
 
 Make a table showing the most popular item in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”.
-```{r}
+```{r most_popular_item}
 most_pop_item_aisles = instacart_data %>%
   filter(., aisle == "baking ingredients") %>% 
   group_by(aisle) %>% 
@@ -145,24 +148,32 @@ most_pop_item_aisles = instacart_data %>%
   count(.,product_name)
 Most_pop_veg = tail(data.table(most_pop_item_aisles, key = "n"),1)
 
-rbind(Most_pop_baking, Most_pop_dog, Most_pop_veg)
+rbind(Most_pop_baking, Most_pop_dog, Most_pop_veg) %>% 
+  knitr::kable(digits = 2)
 ```
 
+
+**Reading from the summary table above, light brown sugar is the most popular item in "baking ingredients" aisle since brown sugar is a very common cooking ingredient for a variety of baking products. For dog food care, Snack Sticks Chicken & Rice Recipe Dog Treats are the most popular. Organic baby spinach is characterized as the top of popularity on the packaged vegerables fruits.**
+
+
 Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
-```{r}
+```{r mean_hour_of_day}
 instacart_data %>%
   filter(product_name == "Pink Lady Apples" | product_name == "Coffee Ice Cream") %>% 
   group_by(product_name, order_dow) %>%
   summarize(mean_hour = mean(order_hour_of_day)) %>% 
-  spread(key = order_dow, value = mean_hour) 
+  spread(key = order_dow, value = mean_hour) %>% 
+  knitr::kable(digits = 5)
 ```
 
+**My comment: People almost all ordered coffee ice cream in the afternoon time from 13:00 to 16:00 across whole week. Possibility of people ordering ice cream for break after morning work or maybe because of elevated temprature in the afternoon. Pink lady apples are ordered around noon.**
+
 #Problem 3
-```{r}
+```{r data_importing}
 data(ny_noaa)
 noaa_data = janitor::clean_names(ny_noaa)
 ```
-Write a short description of the dataset, noting the size and structure of the data, which is dimension: `r nrow(noaa_data)` rows x `r ncol(noaa_data)` columns. Some key variables are as the followings:
+**The NOAA dataset provides weather data from stations around the world. The size and structure of the data, which is dimension: `r nrow(noaa_data)` rows x `r ncol(noaa_data)` columns. There are so many missing data exists since stations may not collect certain precipation or snow data. Some key variables are as the followings:**
 id: Weather station ID
 date: Date of observation
 prcp: Precipitation (tenths of mm)
@@ -171,89 +182,86 @@ snwd: Snow depth (mm)
 tmax: Maximum temperature (tenths of °C)
 tmin: Minimum temperature (tenths of °C)
 
-Now, indicating the extent to which missing data is an issue. The numbers of missing values for each variable/column are as the following: 
-prcp: `r sum(is.na(noaa_data$prcp))`
-snow: `r sum(is.na(noaa_data$snow))`
-snwd: `r sum(is.na(noaa_data$snwd))`
-tmax: `r sum(is.na(noaa_data$tmax))`
-tmin: `r sum(is.na(noaa_data$tmin))`
+**Now, indicating the extent to which missing data is an issue. The numbers of missing values for each variable/column are as the following: **
+**prcp: `r sum(is.na(noaa_data$prcp))`**
+**snow: `r sum(is.na(noaa_data$snow))`**
+**snwd: `r sum(is.na(noaa_data$snwd))`**
+**tmax: `r sum(is.na(noaa_data$tmax))`**
+**tmin: `r sum(is.na(noaa_data$tmin))`**
 
 
 Do some data cleaning. Create separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
 
-```{r}
+```{r modifying_dataset}
 #Create separate variables for year, month, and day.
 New_noaa_data = mutate(noaa_data, noaa_data$date, year = as.integer(format(noaa_data$date, format = "%Y")), month = as.integer(format(noaa_data$date, format = "%m")), day = as.integer(format(noaa_data$date, format = "%d")))
 
 #Ensure observations for temperature, precipitation, and snowfall are given in reasonable units.
 New_noaa_data = mutate(New_noaa_data,
-  tmax = as.integer(tmax) / 10, 
-  tmin = as.integer(tmin) / 10,
-  prcp = as.integer(prcp) / 10
+  tmax = as.numeric(tmax) / 10, 
+  tmin = as.numeric(tmin) / 10,
+  prcp = as.numeric(prcp) / 10
 )
 
 #For snowfall, what are the most commonly observed values? Why?
-which.max(table(New_noaa_data$snow))
+names(which.max(table(New_noaa_data$snow)))
+snowfall_most_observed = filter(New_noaa_data, snow != "0")
+names(which.max(table(snowfall_most_observed$snow))) 
 ```
+**The most commonly observed value for snowfall is 0, which shows that most of the time in NY does not snow. The second most commonly observed value for snowfall is 25**
+
+
 
 Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
-
-```{r} 
+```{r average_max_temp} 
 Jan_July_average = New_noaa_data %>%
   select(id, prcp, snow, snwd, tmax, tmin, year, month, day) %>% 
   filter(month == 1 | month == 7) %>% 
   filter(!is.na(tmax) | !is.na(tmin))
-  
-Jan_plot = Jan_July_average %>% 
-  filter(month == 1) %>% 
-  group_by(id, year, month) %>% 
-  summarize(mean_tempmax = mean(as.integer(tmax), na.rm = TRUE)) %>%
-  ggplot(aes(x = id, y = mean_tempmax, color = year)) + 
-    geom_point() +
-    labs(
-      title = "Average temperature in January in each station across years",
-      x = "Weather station ID",
-      y = "Mean Maxiumum temperature (°C)"
-      )
 
-July_plot = Jan_July_average %>% 
-  filter(month == 7) %>% 
+Jan_July_average %>% 
   group_by(id, year, month) %>%
-  summarize(mean_tempmax = mean(as.integer(tmax), na.rm = TRUE)) %>%
-  ggplot(aes(x = id, y = mean_tempmax, color = year)) + 
-    geom_point() +
+  summarize(mean_tempmax = mean(as.numeric(tmax), na.rm = TRUE)) %>%
+  ggplot(aes(x = year, y = mean_tempmax, color = id)) + 
+    geom_point() + 
+    geom_line() +
     labs(
-      title = "Average temperature in July in each station across years",
+      title = "Average temperature in each station across years",
       x = "Weather station ID",
       y = "Mean Maxiumum temperature (°C)"
-      )
-(Jan_plot + July_plot)
+      ) +
+  theme(axis.text.x = element_text(angle = 45, size = 10)) +
+  theme(legend.position = "none") +
+  facet_grid(~month)
 ```
+**Clearly, we can conclude that the average maximum temperature in each station across years is definitely lower in January than in July. And the variation (range of variation) across different years for each station seems to be smaller for July and bigger for January.**
+
 
 
 Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
-```{r} 
+```{r two_panel_plot} 
 # (i) tmax vs tmin for the full dataset
-New_noaa_data %>% 
-  filter(!is.na(tmax) & !is.na(tmin)) %>% 
-  ggplot(aes(x = tmin, y = tmax)) + 
+tmax_vs_tmin = New_noaa_data %>% 
+  ggplot(aes(x = tmax, y = tmin)) + 
     geom_hex() +
     labs(
         title = "Temperature plot",
-        x = "Minimum temperature (°C)",
-        y = "Maxiumum temperature (°C)"
-      )
+        x = "Maximum temperature (°C)",
+        y = "Minimum temperature (°C)"
+      ) +
+  theme(axis.text.x = element_text(angle = 45, size = 6))
 
 # (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year
-New_noaa_data %>% 
+snowfall_distribution = New_noaa_data %>% 
+  mutate(year = as.character(year)) %>% 
   filter(snow > 0 & snow < 100) %>%
-  ggplot(aes(x = year, y = snow, color = year)) + 
-    geom_point() +
-    geom_line() +
+  ggplot(aes(x = snow, y = year)) + 
+    geom_density_ridges(scale = .9, alpha = .5) +
     labs(
       title = "Distribution of snowfall among different years",
-      x = "Distribution of snowfall within each year",
-      y = "Snowfall values"
+      x = "Snowfall values",
+      y = "Distribution of snowfall within each year"
     )
+(tmax_vs_tmin + snowfall_distribution)
 ```
-
+**The maximum temperatures tend to lie between 0 and 30 °C, while in contrast the minimum temperatures tend to lie within (-15 and 15) °C for the full dataset.The distributions of snowfall values greater than 0 and less than 100 separately by years are pretty consistent and remain mostly without large variations across different years.**
