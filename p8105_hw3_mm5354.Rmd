@@ -50,6 +50,7 @@ brfss %>%
     geom_point() + 
     geom_line()
 ```
+
 **Most states contain less than 20 distinct locations (some even contain less than 10 different locations) from 2002 to 2010.**
 
 
@@ -65,6 +66,8 @@ filter(brfss, brfss$locationabbr == "NY") %>%
 ```
 
 **The mean proportions of “Excellent” responses across locations in NY State are similar for 2006 and 2010. The standard deviation of the proportion of “Excellent” responses across locations in NY State is the greatest for 2002, and lowest for 2010**
+
+
 
 
 For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.
@@ -85,7 +88,9 @@ brfss %>%
     theme(legend.position = "right") +
     facet_grid(~response_new)
 ```
+
 **The distribution of average proportions for each response category is pretty consistent whithin its own response category across different states. The mean proportions of each response type have roughly the same center across states across years from 2002 to 2010. This implies the mean proportion of each response stays on the same level across years. The distribution of average proportions of "Poor" responses has the least variation (also least range), while in contrast, the distribution of average proportions of "Very good" responses seems to have the greatest variation (also greatest range). This means that people who have gaven poor responses before, this opinion won't vary a lot across different years **
+
 
 
 
@@ -119,7 +124,10 @@ ggplot(instacart_data, aes(x = aisle, fill = department)) +
   theme(legend.position = "bottom") +
   theme(axis.text.x = element_text(angle = 90, size = 5))
 ```
+
 **According to this Bar Graph, "Produce" is an aisle that is most popular among all the aisles because it has the greatest number of items ordered from this aisle. Fresh vegetables, fresh fruits, and packaged vegetables fruits are characterized as the top 3 greatest ordered items/products which all belong to this "Produce" aisle**
+
+
 
 
 Make a table showing the most popular item in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”.
@@ -229,6 +237,7 @@ Jan_July_average %>%
   theme(legend.position = "none") +
   facet_grid(~month)
 ```
+
 **Clearly, we can conclude that the average maximum temperature in each station across years is definitely lower in January than in July. And the variation (range of variation) across different years for each station seems to be smaller for July and bigger for January.**
 
 
@@ -259,4 +268,5 @@ snowfall_distribution = New_noaa_data %>%
     )
 (tmax_vs_tmin + snowfall_distribution)
 ```
+
 **The maximum temperatures tend to lie between 0 and 30 °C, while in contrast the minimum temperatures tend to lie within (-15 and 15) °C for the full dataset.The distributions of snowfall values greater than 0 and less than 100 separately by years are pretty consistent and remain mostly without large variations across different years.**
